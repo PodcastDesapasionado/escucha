@@ -19,16 +19,19 @@ textarea{width:100%;height:50vh;font:16px/1.5 ui-monospace,monospace;background:
 .pequeno{color:var(--suave);font-size:.85rem}
 #lector{position:fixed;inset:0;display:none}
 #lector.activo{display:block}
-#pista{position:absolute;inset:0;overflow-y:scroll;scrollbar-width:none;padding:45vh 7vw 60vh}
+#pista{position:absolute;inset:0;overflow-y:scroll;scrollbar-width:none;padding:var(--linea,40vh) 0 70vh}
 #pista::-webkit-scrollbar{display:none}
-#texto{max-width:1100px;margin:0 auto;font-weight:500;line-height:1.45;white-space:pre-wrap}
+#texto{width:var(--ancho,80%);margin-left:var(--izq,10%);font-weight:500;line-height:1.35;white-space:pre-wrap}
 #texto h2{font-size:.8em;color:var(--suave);margin:1.4em 0 .3em}
 #texto.espejo{transform:scaleX(-1)}
-#guia{position:absolute;left:0;right:0;top:40vh;height:1.6em;border-top:2px solid var(--guia);border-bottom:2px solid var(--guia);pointer-events:none}
+#guia{position:absolute;left:var(--izq,10%);width:var(--ancho,80%);top:var(--linea,40vh);height:1.4em;border-top:2px solid var(--guia);border-bottom:2px solid var(--guia);pointer-events:none}
 #barra{position:absolute;left:0;right:0;bottom:0;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center;padding:10px 10px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(transparent,#000c 40%);transition:opacity .4s}
 #lector.rodando #barra{opacity:.15}
 #lector.rodando #barra:hover{opacity:1}
 #barra span{color:var(--suave);font-size:.8rem;min-width:4.5em;text-align:center}
+#barra label{display:flex;align-items:center;gap:4px;color:var(--suave);font-size:.8rem}
+#barra input[type=range]{width:110px;accent-color:#e8c46a}
+#lector.colocando #texto{outline:2px dashed #e8c46a88}
 </style>
 </head>
 <body>
@@ -39,7 +42,7 @@ textarea{width:100%;height:50vh;font:16px/1.5 ui-monospace,monospace;background:
   <p><input type="file" id="fichero" accept=".md,.txt,text/plain,text/markdown"></p>
   <textarea id="entrada" placeholder="…o pega aquí el guion"></textarea>
   <p><button id="empezar">Empezar ▶</button> <button id="borrar">Borrar el texto guardado</button></p>
-  <p class="pequeno">Atajos: espacio = rodar o parar · ↑ ↓ = más o menos rápido · + − = letra · ← = volver atrás un poco · Esc = salir.</p>
+  <p class="pequeno">Coloca la columna con «Columna», «Lugar» y «Línea» hasta que quede pegada al objetivo; se recuerda en este aparato. Atajos: espacio = rodar o parar · ↑ ↓ = más o menos rápido · + − = letra · ← = volver atrás un poco · Esc = salir.</p>
 </section>
 
 <section id="lector">
@@ -50,6 +53,9 @@ textarea{width:100%;height:50vh;font:16px/1.5 ui-monospace,monospace;background:
     <button id="lento">− vel</button><span id="velv"></span><button id="rapido">+ vel</button>
     <button id="menos">A−</button><span id="tamv"></span><button id="mas">A+</button>
     <button id="espejo">Espejo</button>
+    <label>Columna <input type="range" id="ancho" min="10" max="100" step="1"></label>
+    <label>Lugar <input type="range" id="lugar" min="0" max="100" step="1"></label>
+    <label>Línea <input type="range" id="linea" min="5" max="80" step="1"></label>
     <button id="arriba">⤒ Inicio</button>
     <button id="salir">Salir</button>
   </div>
@@ -65,6 +71,9 @@ const guardar = (k, v) => { try { localStorage.setItem(K + k, JSON.stringify(v))
 let vel = leer("vel", 40);      // píxeles por segundo
 let tam = leer("tam", 56);      // tamaño de letra
 let espejo = leer("espejo", false);
+let ancho = leer("ancho", 80);     // % del ancho de la pantalla
+let lugar = leer("lugar", 50);     // 0 = pegada a la izquierda, 100 = a la derecha
+let linea = leer("linea", 40);     // altura de la línea de lectura, % de la pantalla
 let rodando = false, ultimo = 0, resto = 0;
 
 $("#entrada").value = leer("texto", "");
@@ -88,6 +97,11 @@ function preparar(md) {
 function aplicar() {
   $("#texto").style.fontSize = tam + "px";
   $("#texto").classList.toggle("espejo", espejo);
+  const izq = (100 - ancho) * lugar / 100;
+  const raiz = $("#lector").style;
+  raiz.setProperty("--ancho", ancho + "%"); raiz.setProperty("--izq", izq + "%"); raiz.setProperty("--linea", linea + "vh");
+  $("#ancho").value = ancho; $("#lugar").value = lugar; $("#linea").value = linea;
+  guardar("ancho", ancho); guardar("lugar", lugar); guardar("linea", linea);
   $("#velv").textContent = vel + " px/s";
   $("#tamv").textContent = tam + " px";
   guardar("vel", vel); guardar("tam", tam); guardar("espejo", espejo);
@@ -123,6 +137,11 @@ $("#rapido").onclick = () => { vel = Math.min(300, vel + 5); aplicar(); };
 $("#menos").onclick = () => { tam = Math.max(20, tam - 4); aplicar(); };
 $("#mas").onclick = () => { tam = Math.min(140, tam + 4); aplicar(); };
 $("#espejo").onclick = () => { espejo = !espejo; aplicar(); };
+for (const [id, fija] of [["ancho", v => ancho = v], ["lugar", v => lugar = v], ["linea", v => linea = v]]) {
+  const el = $("#" + id);
+  el.addEventListener("input", () => { fija(+el.value); $("#lector").classList.add("colocando"); aplicar(); });
+  el.addEventListener("change", () => $("#lector").classList.remove("colocando"));
+}
 $("#arriba").onclick = () => { $("#pista").scrollTop = 0; };
 $("#salir").onclick = salir;
 $("#pista").addEventListener("click", () => rodar(!rodando));
