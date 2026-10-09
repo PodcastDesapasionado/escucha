@@ -2,161 +2,894 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Prompter">
+<meta name="color-scheme" content="dark">
 <link rel="apple-touch-icon" href="iconos/icono-180.png">
 <title>Teleprompter</title>
 <style>
-:root{--fondo:#111;--texto:#f2f0ea;--suave:#9a978e;--caja:#222;--guia:#e8c46a55}
-*{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--fondo);color:var(--texto);font-family:-apple-system,BlinkMacSystemFont,sans-serif}
-button,select{font:inherit;color:inherit;background:var(--caja);border:0;border-radius:9px;padding:8px 12px;cursor:pointer}
-#carga{max-width:760px;margin:0 auto;padding:20px 16px}
-#carga h1{font-size:1.3rem}
-textarea{width:100%;height:50vh;font:16px/1.5 ui-monospace,monospace;background:var(--caja);color:var(--texto);border:0;border-radius:10px;padding:12px}
-.pequeno{color:var(--suave);font-size:.85rem}
-#lector{position:fixed;inset:0;display:none}
+:root{--ui-fondo:#0e0e0f;--ui-caja:#1b1b1d;--ui-caja2:#262629;--ui-linea:#34343a;--ui-texto:#ecebe6;--ui-suave:#9b9a93;--ui-acento:#e8c46a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--ui-fondo);color:var(--ui-texto);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;-webkit-text-size-adjust:100%;overscroll-behavior:none}
+button,select{font:inherit;color:inherit;background:var(--ui-caja2);border:1px solid var(--ui-linea);border-radius:11px;padding:0 14px;min-height:44px;cursor:pointer;touch-action:manipulation}
+button:active{background:var(--ui-linea)}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--ui-acento);outline-offset:2px}
+button.primario{background:var(--ui-acento);color:#1a1405;border-color:var(--ui-acento);font-weight:650}
+button.primario:active{filter:brightness(.9)}
+button.fantasma{background:transparent}
+.suave{color:var(--ui-suave)}
+.pequeno{color:var(--ui-suave);font-size:.84rem;line-height:1.45}
+
+/* ---------- Pantalla de carga ---------- */
+#carga{max-width:780px;margin:0 auto;padding:max(22px,env(safe-area-inset-top)) 18px max(22px,env(safe-area-inset-bottom));min-height:100%;display:flex;flex-direction:column;gap:14px}
+#carga header{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+#carga h1{font-size:1.45rem;font-weight:650;margin:0;letter-spacing:-.01em}
+#zona{position:relative;display:flex;flex-direction:column;flex:1;min-height:260px}
+#entrada{flex:1;min-height:260px;width:100%;resize:none;font:16px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--ui-caja);color:var(--ui-texto);border:1px solid var(--ui-linea);border-radius:14px;padding:14px}
+#entrada::placeholder{color:var(--ui-suave)}
+#soltar{position:absolute;inset:0;border-radius:14px;border:2px dashed var(--ui-acento);background:#0e0e0fe6;display:none;align-items:center;justify-content:center;font-size:1.1rem;color:var(--ui-acento);pointer-events:none}
+body.arrastrando #soltar{display:flex}
+#cifras{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;min-height:1.4em}
+#cifras b{font-weight:650;color:var(--ui-texto)}
+#acciones{display:flex;flex-wrap:wrap;gap:8px}
+#acciones .espacio{flex:1}
+#mensaje{min-height:1.3em;color:var(--ui-acento);font-size:.88rem}
+#carga details{border-top:1px solid var(--ui-linea);padding-top:10px}
+#carga summary{cursor:pointer;color:var(--ui-suave);font-size:.88rem;padding:6px 0}
+
+/* ---------- Lector ---------- */
+#lector{position:fixed;inset:0;display:none;background:var(--fondo);color:var(--texto);--fondo:#000;--texto:#fff;--guia:#ffffff40;--ancho:80%;--izq:10%;--lp:40vh;--h:100vh;--lh:70px;--inter:1.35}
 #lector.activo{display:block}
-#pista{position:absolute;inset:0;overflow-y:scroll;scrollbar-width:none;padding:var(--linea,40vh) 0 70vh}
+#escena{position:absolute;inset:0;overflow:hidden}
+#lector.eV #escena{transform:scaleY(-1)}
+#pista{position:absolute;inset:0;overflow-y:scroll;overflow-x:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior:none;padding:var(--lp) 0 calc(var(--h) - var(--lp));margin:0;touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 #pista::-webkit-scrollbar{display:none}
-#texto{width:var(--ancho,80%);margin-left:var(--izq,10%);font-weight:500;line-height:1.35;white-space:pre-wrap}
-#texto h2{font-size:.8em;color:var(--suave);margin:1.4em 0 .3em}
-#texto.espejo{transform:scaleX(-1)}
-#guia{position:absolute;left:var(--izq,10%);width:var(--ancho,80%);top:var(--linea,40vh);height:1.4em;border-top:2px solid var(--guia);border-bottom:2px solid var(--guia);pointer-events:none}
-#barra{position:absolute;left:0;right:0;bottom:0;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center;padding:10px 10px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(transparent,#000c 40%);transition:opacity .4s}
-#lector.rodando #barra{opacity:.15}
-#lector.rodando #barra:hover{opacity:1}
-#barra span{color:var(--suave);font-size:.8rem;min-width:4.5em;text-align:center}
-#barra label{display:flex;align-items:center;gap:4px;color:var(--suave);font-size:.8rem}
-#barra input[type=range]{width:110px;accent-color:#e8c46a}
-#lector.colocando #texto{outline:2px dashed #e8c46a88}
+#texto{position:relative;width:var(--ancho);margin-left:var(--izq);font-weight:560;line-height:var(--inter);overflow-wrap:break-word;white-space:pre-wrap}
+#texto.centro{text-align:center}
+#texto.der{text-align:right}
+#texto.just{text-align:justify;text-align-last:left;hyphens:auto;-webkit-hyphens:auto}
+#colum{position:absolute;top:0;bottom:0;left:var(--izq);width:var(--ancho);display:none;border-left:2px dashed var(--ui-acento);border-right:2px dashed var(--ui-acento);background:#e8c46a14;cursor:grab;touch-action:none;z-index:4}
+#lector.colocar #colum{display:block}
+#colum .asa{position:absolute;top:0;bottom:0;width:min(34px,38%);cursor:ew-resize;touch-action:none}
+#colum .asa::after{content:"";position:absolute;top:50%;left:50%;width:6px;height:64px;margin:-32px 0 0 -3px;border-radius:3px;background:var(--ui-acento)}
+#colum .asa.i{left:0}#colum .asa.d{right:0}
+#colum .etq{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font:600 .8rem -apple-system,sans-serif;color:var(--ui-acento);background:#000a;padding:4px 8px;border-radius:8px;white-space:nowrap;pointer-events:none}
+.ppl{font-size:.78rem;color:var(--ui-suave)}.ppl.mal{color:var(--ui-acento)}
+#texto div{min-height:1em}
+#texto h2{font-size:.62em;font-weight:650;letter-spacing:.08em;text-transform:uppercase;opacity:.55;margin:1.3em 0 .35em;line-height:1.2}
+#lector.eH #texto{transform:scaleX(-1)}
+#guia{position:absolute;left:var(--izq);width:var(--ancho);top:var(--lp);height:var(--lh);border-top:2px solid var(--guia);border-bottom:2px solid var(--guia);pointer-events:none;transition:opacity .3s}
+#lector.singuia #guia{display:none}
+#cuenta{position:absolute;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none;font-size:34vmin;font-weight:700;opacity:.9}
+#cuenta.ver{display:flex}
+#lector.eH #cuenta span{display:inline-block;transform:scaleX(-1)}
+
+#progreso{position:absolute;left:0;right:0;top:0;height:3px;background:#ffffff1a;z-index:5;pointer-events:none}
+#progreso i{display:block;height:100%;width:0;background:var(--ui-acento)}
+
+.hud{position:absolute;left:0;right:0;z-index:6;display:flex;align-items:center;gap:8px;padding:10px 12px;transition:opacity .35s;color:#ecebe6}
+.hud button{background:#1b1b1dd9;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.hud button.primario{background:var(--ui-acento);color:#1a1405}
+#sup{top:0;padding-top:calc(12px + env(safe-area-inset-top));background:linear-gradient(#000c,transparent)}
+#inf{bottom:0;padding-bottom:calc(12px + env(safe-area-inset-bottom));flex-wrap:wrap;justify-content:center;background:linear-gradient(transparent,#000c)}
+#lector.rodando:not(.ver) .hud{opacity:0;pointer-events:none}
+#lector.rodando:not(.ver){cursor:none}
+#sup .centro{flex:1;text-align:center;font-size:.86rem;color:#c9c8c0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+#inf .grupo{display:flex;align-items:center;gap:6px}
+#inf .val{min-width:4.6em;text-align:center;font-size:.82rem;color:#c9c8c0;font-variant-numeric:tabular-nums}
+#inf button{white-space:nowrap}
+#rodar{min-width:128px;min-height:50px;font-weight:650}
+#voz[aria-pressed=true]{background:var(--ui-acento);color:#1a1405;border-color:var(--ui-acento)}
+
+/* ---------- Panel de ajustes ---------- */
+#velo{position:fixed;inset:0;background:#0008;z-index:20;display:none}
+#panel{position:fixed;top:0;right:0;bottom:0;width:min(420px,100%);z-index:21;background:var(--ui-fondo);border-left:1px solid var(--ui-linea);transform:translateX(105%);transition:transform .28s ease,opacity .2s;display:flex;flex-direction:column;color:var(--ui-texto)}
+body.panel #velo{display:block}
+body.panel #panel{transform:none}
+body.colocando #panel{opacity:.18}
+body.colocando #velo{background:transparent}
+#panel header{display:flex;align-items:center;justify-content:space-between;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;border-bottom:1px solid var(--ui-linea)}
+#panel h2{margin:0;font-size:1.05rem}
+#panel .cuerpo{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 16px calc(24px + env(safe-area-inset-bottom))}
+#panel h3{font-size:.74rem;letter-spacing:.09em;text-transform:uppercase;color:var(--ui-suave);margin:22px 0 8px;font-weight:650}
+.fila{display:flex;flex-direction:column;gap:4px;padding:8px 0}
+.fila .cab{display:flex;justify-content:space-between;align-items:baseline;font-size:.95rem}
+.fila .cab output{color:var(--ui-suave);font-size:.84rem;font-variant-numeric:tabular-nums}
+.fila.linea{flex-direction:row;align-items:center;justify-content:space-between;gap:12px}
+input[type=range]{width:100%;height:34px;accent-color:var(--ui-acento);margin:0;touch-action:pan-y}
+.sw{width:54px;min-height:32px;height:32px;padding:0;border-radius:16px;position:relative;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#9b9a93;transition:transform .18s,background .18s}
+.sw[aria-checked=true]{background:var(--ui-acento);border-color:var(--ui-acento)}
+.sw[aria-checked=true]::after{transform:translateX(22px);background:#1a1405}
+.seg{display:flex;gap:6px}
+.seg button{flex:1;padding:0 8px;font-size:.88rem}
+.seg button[aria-pressed=true]{outline:2px solid var(--ui-acento);outline-offset:-2px}
+.colores button{font-weight:650;font-size:1rem;min-height:52px}
+#teclas{display:flex;flex-direction:column;gap:6px}
+.tecla{display:flex;align-items:center;gap:8px}
+.tecla kbd{min-width:76px;text-align:center;font:600 .85rem ui-monospace,Menlo,monospace;background:var(--ui-caja);border:1px solid var(--ui-linea);border-radius:8px;padding:9px 8px}
+.tecla select{flex:1;min-height:40px;font-size:.88rem}
+.tecla button.x{min-height:40px;width:40px;padding:0}
+#estadovoz{min-height:1.3em;color:var(--ui-acento);font-size:.84rem}
+@media (max-width:520px){#inf .val{min-width:3.8em}#rodar{min-width:104px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
+
+<!-- ======== Carga ======== -->
 <section id="carga">
-  <h1>Teleprompter</h1>
-  <p class="pequeno">Abre tu guion o pégalo aquí. El texto se queda en este aparato: no se sube a ningún sitio.
-    Lo que vaya después de una línea <code>---</code> no se muestra (material final).</p>
-  <p><input type="file" id="fichero" accept=".md,.txt,text/plain,text/markdown"></p>
-  <textarea id="entrada" placeholder="…o pega aquí el guion"></textarea>
-  <p><button id="empezar">Empezar ▶</button> <button id="borrar">Borrar el texto guardado</button></p>
-  <p class="pequeno">Coloca la columna con «Columna», «Lugar» y «Línea» hasta que quede pegada al objetivo; se recuerda en este aparato. Atajos: espacio = rodar o parar · ↑ ↓ = más o menos rápido · + − = letra · ← = volver atrás un poco · Esc = salir.</p>
+  <header>
+    <h1>Teleprompter</h1>
+    <button id="abrirAjustesC" class="fantasma" aria-label="Ajustes">Ajustes</button>
+  </header>
+  <p class="pequeno" style="margin:0">Abre tu guion, arrástralo aquí o pégalo. El texto se queda en este aparato (solo en su almacenamiento local): no se sube a ningún sitio. Una línea con <code>---</code> corta el guion: lo que viene después no se muestra.</p>
+  <div id="zona">
+    <textarea id="entrada" placeholder="Pega aquí el guion, o suelta un archivo .md / .txt" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+    <div id="soltar">Suelta el archivo para cargarlo</div>
+  </div>
+  <div id="cifras" class="suave"><span><b id="nPal">0</b> palabras</span><span>≈ <b id="nDur">0 min</b> de lectura <span class="pequeno">(a 150 palabras/min)</span></span></div>
+  <div id="mensaje" role="status"></div>
+  <div id="acciones">
+    <label class="boton" style="display:contents"><input type="file" id="fichero" accept=".md,.txt,text/plain,text/markdown" hidden><button type="button" id="abrir">Abrir archivo</button></label>
+    <button type="button" id="pegar">Pegar</button>
+    <button type="button" id="borrar" class="fantasma">Borrar texto</button>
+    <span class="espacio"></span>
+    <button type="button" id="empezar" class="primario">Empezar ▶</button>
+  </div>
+  <details>
+    <summary>Consejos de colocación</summary>
+    <p class="pequeno">Dentro del lector, en Ajustes: «Columna» estrecha el texto, «Lugar» lo mueve a la izquierda, al centro o a la derecha, y «Línea» sube o baja la línea de lectura hasta la altura del objetivo. Con el cristal del teleprompter activa «Espejo horizontal». Los ajustes se recuerdan en este aparato. En iPad, añade la página a la pantalla de inicio para verla sin barras del navegador.</p>
+  </details>
 </section>
 
-<section id="lector">
-  <div id="pista"><div id="texto"></div></div>
-  <div id="guia"></div>
-  <div id="barra">
-    <button id="rodar">▶ Rodar</button>
-    <button id="lento">− vel</button><span id="velv"></span><button id="rapido">+ vel</button>
-    <button id="menos">A−</button><span id="tamv"></span><button id="mas">A+</button>
-    <button id="espejo">Espejo</button>
-    <label>Columna <input type="range" id="ancho" min="5" max="100" step="1"></label>
-    <label>Lugar <input type="range" id="lugar" min="0" max="100" step="1"></label>
-    <label>Línea <input type="range" id="linea" min="5" max="80" step="1"></label>
-    <button id="arriba">⤒ Inicio</button>
-    <button id="salir">Salir</button>
+<!-- ======== Lector ======== -->
+<section id="lector" aria-label="Lector">
+  <div id="escena">
+    <div id="pista"><div id="texto"></div></div>
+    <div id="guia"></div>
+    <div id="cuenta"><span></span></div>
+    <div id="colum"><i class="asa i"></i><i class="asa d"></i><span class="etq"></span></div>
   </div>
+  <div id="progreso"><i></i></div>
+  <header class="hud" id="sup">
+    <button id="salir" aria-label="Salir al guion">‹ Salir</button>
+    <div class="centro" id="info"></div>
+    <button id="colocarB" aria-label="Colocar la columna con el dedo">Colocar</button>
+    <button id="pantallaCompleta" aria-label="Pantalla completa">⤢</button>
+    <button id="abrirAjustes" aria-label="Ajustes">Ajustes</button>
+  </header>
+  <footer class="hud" id="inf">
+    <div class="grupo">
+      <button id="inicio" aria-label="Ir al inicio">Inicio</button>
+      <button id="atrasB" aria-label="Volver atrás">‹ Atrás</button>
+      <button id="rodar" class="primario">▶ Rodar</button>
+      <button id="adelanteB" aria-label="Avanzar">Adelante ›</button>
+    </div>
+    <div class="grupo">
+      <button id="lento" aria-label="Más lento">−</button><span class="val" id="velv"></span><button id="rapido" aria-label="Más rápido">+</button>
+    </div>
+    <div class="grupo">
+      <button id="menos" aria-label="Letra más pequeña">A−</button><span class="val" id="tamv"></span><button id="mas" aria-label="Letra más grande">A+</button>
+    </div>
+    <div class="grupo"><button id="voz" aria-pressed="false" title="Seguimiento por voz (experimental)">🎙 Voz</button></div>
+  </footer>
 </section>
+
+<!-- ======== Ajustes ======== -->
+<div id="velo"></div>
+<aside id="panel" aria-label="Ajustes" aria-hidden="true">
+  <header><h2>Ajustes</h2><button id="cerrarAjustes">Listo</button></header>
+  <div class="cuerpo">
+    <div id="sliders"></div>
+
+    <h3>Espejo y guía</h3>
+    <div class="fila linea"><span>Espejo horizontal (cristal)</span><button class="sw" role="switch" data-sw="espejo" aria-checked="false"></button></div>
+    <div class="fila linea"><span>Espejo vertical</span><button class="sw" role="switch" data-sw="espejoV" aria-checked="false"></button></div>
+    <div class="fila linea"><span>Mostrar línea de lectura</span><button class="sw" role="switch" data-sw="guia" aria-checked="true"></button></div>
+    <div class="fila"><div class="cab"><span>Alineación del texto</span></div>
+      <div class="seg" id="segAlin"><button data-v="izq">Izq.</button><button data-v="centro">Centro</button><button data-v="der">Der.</button><button data-v="just">Justif.</button></div>
+      <p class="pequeno" style="margin:4px 0 0">Justificado parte las palabras largas con guion para no dejar huecos en columnas estrechas.</p></div>
+    <div class="fila linea"><span>Colocar y redimensionar con el dedo</span><button id="colocarP">Colocar</button></div>
+
+    <h3>Colores</h3>
+    <div class="seg colores" id="segColor"></div>
+
+    <h3>Inicio y retroceso</h3>
+    <div class="fila linea"><span>Cuenta atrás 3-2-1 al empezar</span><button class="sw" role="switch" data-sw="cuenta" aria-checked="true"></button></div>
+    <div class="fila"><div class="cab"><span>Al retroceder, volver</span></div>
+      <div class="seg" id="segAtras"><button data-v="1">1 línea</button><button data-v="2">2 líneas</button><button data-v="3">3 líneas</button></div></div>
+
+    <h3>Pedal y teclas</h3>
+    <p class="pequeno" style="margin:0 0 8px">Los pedales Bluetooth envían teclas. Elige qué hace cada una; «Añadir tecla» aprende la que pulses (útil si tu pedal envía otra). Fijas: + − = letra · [ ] = velocidad · Inicio = al principio · Esc = salir.</p>
+    <div id="teclas"></div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <button id="aprender">Añadir tecla…</button>
+      <button id="restTeclas" class="fantasma">Restaurar teclas</button>
+    </div>
+
+    <h3>Seguimiento por voz (experimental)</h3>
+    <div class="fila linea"><span>Seguirme con la voz</span><button class="sw" role="switch" id="swVoz" aria-checked="false"></button></div>
+    <p class="pequeno" style="margin:0">El texto del guion nunca sale del aparato, pero el reconocimiento de voz lo hace el navegador y tu voz puede pasar por los servidores de Apple o Google. Con el modo activo, «Rodar» significa «seguirme»; el pedal sigue sirviendo para parar o volver atrás.</p>
+    <div id="estadovoz" role="status"></div>
+
+    <h3>General</h3>
+    <button id="restTodo" class="fantasma">Restaurar todos los ajustes</button>
+  </div>
+</aside>
 
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
 const K = "prompter.";
-const leer = (k, d) => { try { const v = localStorage.getItem(K + k); return v === null ? d : JSON.parse(v); } catch { return d; } };
-const guardar = (k, v) => { try { localStorage.setItem(K + k, JSON.stringify(v)); } catch {} };
+const leer = (k, d) => { try { const v = localStorage.getItem(K + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } };
+const guardar = (k, v) => { try { localStorage.setItem(K + k, JSON.stringify(v)); } catch (e) {} };
+const borrarClave = k => { try { localStorage.removeItem(K + k); } catch (e) {} };
+const entre = (v, a, b) => Math.min(b, Math.max(a, v));
 
-let vel = leer("vel", 40);      // píxeles por segundo
-let tam = leer("tam", 56);      // tamaño de letra
-let espejo = leer("espejo", false);
-let ancho = leer("ancho", 80);     // % del ancho de la pantalla
-let lugar = leer("lugar", 50);     // 0 = pegada a la izquierda, 100 = a la derecha
-let linea = leer("linea", 40);     // altura de la línea de lectura, % de la pantalla
-let rodando = false, ultimo = 0, resto = 0;
+/* ---------------- Ajustes ---------------- */
+const TECLAS_DEF = { " ": "alterna", "Enter": "alterna", "PageDown": "alterna", "ArrowDown": "alterna",
+                     "PageUp": "atras", "ArrowUp": "atras", "ArrowLeft": "atras", "ArrowRight": "adelante" };
+const DEF = { vel: 40, tam: 56, inter: 1.35, ancho: 80, lugar: 50, linea: 40, espejo: false, espejoV: false,
+              color: 0, alin: "centro", guia: true, cuenta: true, atras: 2, teclas: TECLAS_DEF };
+const ACCIONES = { alterna: "Rodar / parar", rodar: "Solo rodar", parar: "Solo parar", atras: "Volver atrás (líneas)",
+  frase: "Volver a la frase anterior", adelante: "Avanzar (líneas)", inicio: "Ir al inicio",
+  velmas: "Más rápido", velmenos: "Más lento", nada: "Nada" };
+const COLORES = [
+  { n: "Blanco / negro", f: "#000000", t: "#ffffff", g: "#ffffff45" },
+  { n: "Amarillo / negro", f: "#000000", t: "#ffd84a", g: "#ffd84a50" },
+  { n: "Negro / blanco", f: "#ffffff", t: "#000000", g: "#00000040" }
+];
+const S = {};
+for (const k in DEF) {
+  let v = leer(k, DEF[k]);
+  if (typeof v !== typeof DEF[k] || v === null) v = DEF[k];
+  S[k] = v;
+}
+S.color = entre(Math.round(S.color) || 0, 0, COLORES.length - 1);
+if (typeof S.teclas !== "object" || Array.isArray(S.teclas)) S.teclas = Object.assign({}, TECLAS_DEF);
+const guardarTodo = () => { for (const k in DEF) guardar(k, S[k]); };
 
-$("#entrada").value = leer("texto", "");
-$("#fichero").addEventListener("change", async ev => {
-  const f = ev.target.files[0]; if (!f) return;
-  $("#entrada").value = await f.text(); guardar("texto", $("#entrada").value);
-});
-$("#entrada").addEventListener("input", () => guardar("texto", $("#entrada").value));
-$("#borrar").onclick = () => { $("#entrada").value = ""; guardar("texto", ""); };
+const SLIDERS = [
+  ["Lectura", [
+    { k: "vel", t: "Velocidad", min: 5, max: 300, step: 5, f: v => v + " px/s" },
+    { k: "tam", t: "Tamaño de letra", min: 12, max: 200, step: 2, f: v => v + " px" },
+    { k: "inter", t: "Interlineado", min: 1, max: 2.4, step: 0.05, f: v => (+v).toFixed(2) }
+  ]],
+  ["Columna y posición", [
+    { k: "ancho", t: "Columna (ancho)", min: 3, max: 100, step: 0.5, f: v => (+v).toFixed(+v % 1 ? 1 : 0) + " %", colocar: true },
+    { k: "lugar", t: "Lugar (como se ve en el cristal)", min: 0, max: 100, step: 0.5, f: v => v <= 0 ? "borde izquierdo" : v >= 100 ? "borde derecho" : v === 50 ? "centro" : (+v).toFixed(+v % 1 ? 1 : 0) + " %", colocar: true },
+    { k: "linea", t: "Línea de lectura (altura)", min: 5, max: 85, step: 1, f: v => v + " % desde arriba", colocar: true }
+  ]]
+];
 
-function escapar(s) { return s.replace(/[&<>]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;"}[c])); }
-function preparar(md) {
+/* ---------------- Estado del lector ---------------- */
+let P = [], Pini = [], Pel = [], tops = [];
+let activo = false, rodando = false, contando = false, tokenCuenta = 0;
+let pos = 0, escrito = 0, maxPos = 0, pausaHasta = 0, anim = null, ultimoT = 0, ultimoHud = 0;
+let lineaPx = 0, lhPx = 0, ultimaFirma = "";
+let ocultar = 0;
+
+/* ---------------- Utilidades de texto ---------------- */
+function norm(s) {
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean);
+}
+function utiles(md) {
   const lineas = md.replace(/\r/g, "").split("\n");
   const corte = lineas.findIndex(l => /^\s*---\s*$/.test(l));
-  const util = corte >= 0 ? lineas.slice(0, corte) : lineas;
-  return util.map(l => {
-    if (/^#{1,6}\s/.test(l)) return "<h2>" + escapar(l.replace(/^#+\s*/, "")) + "</h2>";
-    return escapar(l.replace(/\*\*|__|\*|_|`/g, "").replace(/^\s*[-*]\s+/, "• ").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1"));
-  }).join("\n").replace(/\n{3,}/g, "\n\n");
+  return corte >= 0 ? lineas.slice(0, corte) : lineas;
 }
+const esTitulo = l => /^#{1,6}\s/.test(l);
+function limpiar(l) {
+  return l.replace(/^\s*[-*+]\s+/, "• ").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/\*\*|__|\*|_|`/g, "");
+}
+function escapar(s) { return s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
+function contarPalabras(md) {
+  let n = 0;
+  for (const l of utiles(md)) {
+    if (esTitulo(l)) continue;
+    for (const t of limpiar(l).split(/\s+/)) if (/[\p{L}\p{N}]/u.test(t)) n++;
+  }
+  return n;
+}
+function formatoDur(seg) {
+  const m = Math.round(seg / 60);
+  if (m < 1) return seg > 0 ? "menos de 1 min" : "0 min";
+  if (m < 60) return m + " min";
+  return Math.floor(m / 60) + " h " + (m % 60 ? (m % 60) + " min" : "");
+}
+function reloj(seg) {
+  seg = Math.max(0, Math.round(seg));
+  const m = Math.floor(seg / 60), s = seg % 60;
+  return m + ":" + (s < 10 ? "0" : "") + s;
+}
+
+/* Construye el DOM del guion y el índice de palabras. */
+function construir(md) {
+  P = []; Pini = [];
+  const partes = [];
+  let inicioFrase = true, blancoAntes = false;
+  for (const l0 of utiles(md)) {
+    if (esTitulo(l0)) {
+      partes.push("<h2>" + escapar(l0.replace(/^#+\s*/, "").replace(/\*\*|__|`/g, "")) + "</h2>");
+      blancoAntes = false; inicioFrase = true; continue;
+    }
+    const l = limpiar(l0);
+    if (!l.trim()) {
+      if (!blancoAntes && partes.length) partes.push("<div><br></div>");
+      blancoAntes = true; inicioFrase = true; continue;
+    }
+    blancoAntes = false;
+    const trozos = l.split(/(\s+)/);
+    let html = "";
+    for (const t of trozos) {
+      if (!t) continue;
+      if (/^\s+$/.test(t)) { html += t; continue; }
+      const ws = norm(t);
+      if (!ws.length) { html += escapar(t); continue; }
+      html += '<span data-p="' + P.length + '" data-n="' + ws.length + '">' + escapar(t) + "</span>";
+      for (let i = 0; i < ws.length; i++) { Pini.push(inicioFrase && i === 0); P.push(ws[i]); }
+      inicioFrase = /[.!?…]["'»”’)\]]*$/.test(t);
+    }
+    partes.push("<div>" + html + "</div>");
+    inicioFrase = true; // cada línea de texto empieza frase nueva para el retroceso
+  }
+  return partes.join("");
+}
+
+/* ---------------- Medición y posición ---------------- */
+function medir() {
+  const texto = $("#texto"), pista = $("#pista");
+  Pel = new Array(P.length); tops = new Array(P.length);
+  const base = texto.offsetTop;
+  for (const sp of texto.querySelectorAll("span[data-p]")) {
+    const p = +sp.dataset.p, n = +sp.dataset.n, t = sp.offsetTop + base;
+    for (let i = 0; i < n; i++) { Pel[p + i] = sp; tops[p + i] = t; }
+  }
+  maxPos = Math.max(0, pista.scrollHeight - pista.clientHeight);
+  const lin = new Set(tops); medido = lin.size ? P.length / lin.size : 0;
+}
+let medido = 0;
+function pistaPPL() {
+  const el = $("#ppl"); if (!el) return;
+  const W = window.innerWidth;
+  const n = (activo && medido) ? medido : (S.ancho / 100 * W) / (S.tam * 0.5) / 6;
+  const t = n.toLocaleString("es-ES", { maximumFractionDigits: 1 });
+  el.textContent = "≈ " + t + " palabras por línea" + (n < 1.5 ? " · conviene ensanchar la columna o bajar la letra" : "");
+  el.classList.toggle("mal", n < 1.5);
+}
+function palabraEnLinea(y) {
+  // primera palabra de la línea que ocupa la línea de lectura
+  if (!tops.length) return 0;
+  const yy = (y === undefined ? pos : y) + lineaPx + lhPx * 0.5;
+  let lo = 0, hi = tops.length - 1;
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (tops[m] <= yy) lo = m; else hi = m - 1; }
+  const t = tops[lo]; while (lo > 0 && tops[lo - 1] === t) lo--;
+  return lo;
+}
+function destinoPalabra(i) { return entre(tops[entre(i, 0, tops.length - 1)] - lineaPx, 0, maxPos); }
+function escribirPos() {
+  pos = entre(pos, 0, maxPos);
+  const p = $("#pista");
+  p.scrollTop = pos; escrito = p.scrollTop;
+}
+function irA(dest, dur) {
+  dest = entre(dest, 0, maxPos);
+  if (dur === 0) { anim = null; pos = dest; escribirPos(); return; }
+  anim = { de: pos, a: dest, t0: performance.now(), dur: dur || 380 };
+}
+function atras(n) {
+  const base = anim ? anim.a : pos;
+  irA(base - n * lhPx, 380); vozResync(base - n * lhPx);
+}
+function adelante(n) { const base = anim ? anim.a : pos; irA(base + n * lhPx, 380); vozResync(base + n * lhPx); }
+function atrasFrase() {
+  if (!P.length) return;
+  const base = anim ? anim.a : pos;
+  const i = palabraEnLinea(base);
+  let s = i; while (s > 0 && !Pini[s]) s--;
+  if (i - s <= 3 && s > 0) { s--; while (s > 0 && !Pini[s]) s--; }
+  irA(destinoPalabra(s), 420); vozResync(destinoPalabra(s));
+}
+function inicio() { cancelarCuenta(); irA(0, 450); vozResync(0); }
+
+/* ---------------- Aplicar ajustes a la interfaz ---------------- */
 function aplicar() {
-  $("#texto").style.fontSize = tam + "px";
-  $("#texto").classList.toggle("espejo", espejo);
-  const izq = (100 - ancho) * lugar / 100;
-  const raiz = $("#lector").style;
-  raiz.setProperty("--ancho", ancho + "%"); raiz.setProperty("--izq", izq + "%"); raiz.setProperty("--linea", linea + "vh");
-  $("#ancho").value = ancho; $("#lugar").value = lugar; $("#linea").value = linea;
-  guardar("ancho", ancho); guardar("lugar", lugar); guardar("linea", linea);
-  $("#velv").textContent = vel + " px/s";
-  $("#tamv").textContent = tam + " px";
-  guardar("vel", vel); guardar("tam", tam); guardar("espejo", espejo);
+  const L = $("#lector"), st = L.style, pista = $("#pista");
+  const H = pista.clientHeight || window.innerHeight;
+  const firma = [S.tam, S.inter, S.ancho, S.linea, S.alin, H, window.innerWidth].join("|");
+  const idx = (activo && P.length && ultimaFirma && firma !== ultimaFirma) ? palabraEnLinea() : -1;
+  const c = COLORES[S.color];
+  const izq = (100 - S.ancho) * (S.espejo ? 100 - S.lugar : S.lugar) / 100;
+  lineaPx = Math.round(H * S.linea / 100); lhPx = S.tam * S.inter;
+  st.setProperty("--fondo", c.f); st.setProperty("--texto", c.t); st.setProperty("--guia", c.g);
+  st.setProperty("--ancho", S.ancho + "%"); st.setProperty("--izq", izq + "%");
+  st.setProperty("--lp", lineaPx + "px"); st.setProperty("--h", H + "px");
+  st.setProperty("--lh", lhPx + "px"); st.setProperty("--inter", S.inter);
+  const t = $("#texto");
+  t.style.fontSize = S.tam + "px";
+  for (const c of ["izq", "centro", "der", "just"]) t.classList.toggle(c === "just" ? "just" : c, S.alin === c);
+  L.classList.toggle("eH", !!S.espejo); L.classList.toggle("eV", !!S.espejoV);
+  L.classList.toggle("singuia", !S.guia);
+  if (activo && P.length) { medir(); if (idx >= 0) { pos = destinoPalabra(idx); anim = null; escribirPos(); } }
+  pistaPPL();
+  ultimaFirma = firma;
+  $("#velv").textContent = S.vel + " px/s";
+  $("#tamv").textContent = S.tam + " px";
+  refrescarPanel();
+  guardarTodo();
+  hud(true);
 }
-function paso(t) {
-  if (!rodando) return;
-  const dt = ultimo ? (t - ultimo) / 1000 : 0; ultimo = t;
-  resto += vel * dt;
-  const n = Math.floor(resto);
-  if (n) { $("#pista").scrollTop += n; resto -= n; }
-  requestAnimationFrame(paso);
+
+/* ---------------- Rodar / parar ---------------- */
+function etiquetaRodar() {
+  $("#rodar").textContent = contando ? "Cancelar" : rodando ? "❚❚ Parar" : (voz.on ? "▶ Seguir" : "▶ Rodar");
 }
 function rodar(si) {
-  rodando = si; ultimo = 0;
-  $("#rodar").textContent = si ? "❚❚ Parar" : "▶ Rodar";
+  rodando = si; ultimoT = 0;
   $("#lector").classList.toggle("rodando", si);
-  if (si) requestAnimationFrame(paso);
+  if (si && voz.on) vozResync(pos);
+  etiquetaRodar();
+  mostrar();
 }
+function cancelarCuenta() {
+  tokenCuenta++; contando = false;
+  $("#cuenta").classList.remove("ver"); etiquetaRodar();
+}
+function alternar() {
+  if (colocando()) return;
+  if (contando) { cancelarCuenta(); return; }
+  if (rodando) { rodar(false); return; }
+  seguir();
+}
+function seguir() {
+  if (contando || rodando || colocando()) return;
+  if (S.cuenta && pos < lhPx * 1.5 && !voz.on) {
+    const mi = ++tokenCuenta; contando = true; etiquetaRodar();
+    const c = $("#cuenta"), sp = c.firstElementChild;
+    let n = 3;
+    const paso = () => {
+      if (mi !== tokenCuenta) return;
+      if (n === 0) { c.classList.remove("ver"); contando = false; rodar(true); return; }
+      sp.textContent = n; c.classList.add("ver"); n--;
+      setTimeout(paso, 1000);
+    };
+    paso();
+  } else rodar(true);
+}
+function parar() { if (contando) cancelarCuenta(); else if (rodando) rodar(false); }
+
+/* ---------------- Bucle principal ---------------- */
+function frame(t) {
+  if (!activo) return;
+  const dt = ultimoT ? Math.min(0.1, (t - ultimoT) / 1000) : 0; ultimoT = t;
+  const pista = $("#pista");
+  // ¿se movió el usuario (dedo, rueda)? entonces mandan sus manos
+  if (Math.abs(pista.scrollTop - escrito) > 1.5) { pos = pista.scrollTop; escrito = pista.scrollTop; pausaHasta = t + 700; anim = null; }
+  if (anim) {
+    const p = Math.min(1, (t - anim.t0) / anim.dur), e = 1 - Math.pow(1 - p, 3);
+    pos = anim.de + (anim.a - anim.de) * e;
+    if (p >= 1) anim = null;
+    escribirPos();
+  } else if (rodando && t >= pausaHasta) {
+    if (voz.on) {
+      if (voz.obj !== null) { pos += (voz.obj - pos) * Math.min(1, dt * 5); if (Math.abs(voz.obj - pos) < 0.5) pos = voz.obj; }
+    } else pos += S.vel * dt;
+    escribirPos();
+    if (pos >= maxPos - 1 && maxPos > 0) { rodar(false); }
+  }
+  if (t - ultimoHud > 120) { ultimoHud = t; hud(); }
+  requestAnimationFrame(frame);
+}
+function hud(fuerza) {
+  const f = maxPos > 0 ? entre(pos / maxPos, 0, 1) : 0;
+  $("#progreso").firstElementChild.style.width = (f * 100).toFixed(2) + "%";
+  let seg;
+  if (voz.on) { const i = palabraEnLinea(); seg = (P.length - i) / 150 * 60; }
+  else seg = S.vel > 0 ? (maxPos - pos) / S.vel : 0;
+  $("#info").textContent = (voz.on ? "Voz · " : "") + Math.round(f * 100) + " %  ·  quedan " + reloj(seg);
+}
+
+/* ---------------- Controles visibles / ocultos ---------------- */
+function mostrar() {
+  const L = $("#lector");
+  L.classList.add("ver");
+  clearTimeout(ocultar);
+  if (rodando && !document.body.classList.contains("panel")) ocultar = setTimeout(() => L.classList.remove("ver"), 3000);
+}
+function ocultoRodando() { return rodando && !$("#lector").classList.contains("ver"); }
+
+/* ---------------- Entrar y salir ---------------- */
 let bloqueo = null;
 async function pantallaEncendida(si) {
-  try { if (si && "wakeLock" in navigator) bloqueo = await navigator.wakeLock.request("screen"); else if (bloqueo) { await bloqueo.release(); bloqueo = null; } } catch {}
+  try {
+    if (si && "wakeLock" in navigator) { if (!bloqueo) { bloqueo = await navigator.wakeLock.request("screen"); bloqueo.addEventListener("release", () => { bloqueo = null; }); } }
+    else if (bloqueo) { await bloqueo.release(); bloqueo = null; }
+  } catch (e) {}
 }
-$("#empezar").onclick = () => {
-  guardar("texto", $("#entrada").value);
-  $("#texto").innerHTML = preparar($("#entrada").value);
-  $("#carga").style.display = "none"; $("#lector").classList.add("activo");
-  $("#pista").scrollTop = 0; aplicar(); pantallaEncendida(true);
+function empezar() {
+  const md = $("#entrada").value;
+  guardar("texto", md);
+  if (!contarPalabras(md)) { mensaje("No hay texto que mostrar (recuerda que lo posterior a «---» se oculta)."); return; }
+  $("#texto").innerHTML = construir(md);
+  $("#carga").style.display = "none";
+  $("#lector").classList.add("activo"); activo = true;
+  rodando = false; contando = false; anim = null; pos = 0; ultimaFirma = "";
+  $("#lector").classList.remove("rodando"); $("#lector").classList.add("ver");
+  $("#pista").scrollTop = 0; escrito = 0;
+  aplicar(); medir(); pos = 0; escribirPos();
+  etiquetaRodar(); pantallaEncendida(true);
+  requestAnimationFrame(frame);
+}
+function salir() {
+  cancelarCuenta(); rodar(false); vozApagar(); anim = null;
+  activo = false; pantallaEncendida(false);
+  if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+  $("#lector").classList.remove("activo"); $("#carga").style.display = "";
+  cerrarPanel();
+}
+function mensaje(t) { $("#mensaje").textContent = t; clearTimeout(mensaje.t); mensaje.t = setTimeout(() => { $("#mensaje").textContent = ""; }, 5000); }
+
+/* ---------------- Pantalla de carga ---------------- */
+function actualizarCifras() {
+  const n = contarPalabras($("#entrada").value);
+  $("#nPal").textContent = n.toLocaleString("es-ES");
+  $("#nDur").textContent = formatoDur(n / 150 * 60);
+}
+async function cargarArchivo(f) {
+  if (!f) return;
+  if (!(/\.(md|markdown|txt)$/i.test(f.name) || /^text\//.test(f.type))) { mensaje("Formato no admitido: usa un archivo .md o .txt."); return; }
+  if (f.size > 5e6) { mensaje("El archivo es demasiado grande."); return; }
+  $("#entrada").value = await f.text(); guardar("texto", $("#entrada").value); actualizarCifras();
+  mensaje("Cargado: " + f.name);
+}
+$("#entrada").value = leer("texto", "");
+actualizarCifras();
+$("#entrada").addEventListener("input", () => { guardar("texto", $("#entrada").value); actualizarCifras(); });
+$("#abrir").onclick = () => $("#fichero").click();
+$("#fichero").addEventListener("change", async ev => { await cargarArchivo(ev.target.files[0]); ev.target.value = ""; });
+$("#pegar").onclick = async () => {
+  try {
+    const t = await navigator.clipboard.readText();
+    if (t) { $("#entrada").value = t; guardar("texto", t); actualizarCifras(); mensaje("Pegado desde el portapapeles."); return; }
+  } catch (e) {}
+  $("#entrada").focus(); mensaje("Mantén pulsado en el recuadro y elige «Pegar».");
 };
-function salir() { rodar(false); pantallaEncendida(false); $("#lector").classList.remove("activo"); $("#carga").style.display = ""; }
-$("#rodar").onclick = () => rodar(!rodando);
-$("#lento").onclick = () => { vel = Math.max(5, vel - 5); aplicar(); };
-$("#rapido").onclick = () => { vel = Math.min(300, vel + 5); aplicar(); };
-$("#menos").onclick = () => { tam = Math.max(12, tam - 2); aplicar(); };
-$("#mas").onclick = () => { tam = Math.min(160, tam + 2); aplicar(); };
-$("#espejo").onclick = () => { espejo = !espejo; aplicar(); };
-for (const [id, fija] of [["ancho", v => ancho = v], ["lugar", v => lugar = v], ["linea", v => linea = v]]) {
-  const el = $("#" + id);
-  el.addEventListener("input", () => { fija(+el.value); $("#lector").classList.add("colocando"); aplicar(); });
-  el.addEventListener("change", () => $("#lector").classList.remove("colocando"));
-}
-$("#arriba").onclick = () => { $("#pista").scrollTop = 0; };
-$("#salir").onclick = salir;
-$("#pista").addEventListener("click", () => rodar(!rodando));
-document.addEventListener("keydown", ev => {
-  if (!$("#lector").classList.contains("activo")) return;
-  const k = ev.key;
-  if (k === " ") { ev.preventDefault(); rodar(!rodando); }
-  else if (k === "ArrowUp") { ev.preventDefault(); $("#rapido").click(); }
-  else if (k === "ArrowDown") { ev.preventDefault(); $("#lento").click(); }
-  else if (k === "+" || k === "=") $("#mas").click();
-  else if (k === "-") $("#menos").click();
-  else if (k === "ArrowLeft") $("#pista").scrollTop -= tam * 3;
-  else if (k === "Escape") salir();
+$("#borrar").onclick = () => {
+  if (!$("#entrada").value || confirm("¿Borrar el texto guardado en este aparato?")) { $("#entrada").value = ""; borrarClave("texto"); actualizarCifras(); }
+};
+$("#empezar").onclick = empezar;
+let arr = 0;
+window.addEventListener("dragenter", e => { e.preventDefault(); arr++; if (!activo) document.body.classList.add("arrastrando"); });
+window.addEventListener("dragover", e => e.preventDefault());
+window.addEventListener("dragleave", () => { arr = Math.max(0, arr - 1); if (!arr) document.body.classList.remove("arrastrando"); });
+window.addEventListener("drop", e => {
+  e.preventDefault(); arr = 0; document.body.classList.remove("arrastrando");
+  if (activo) return;
+  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f) cargarArchivo(f);
+  else if (e.dataTransfer) { const t = e.dataTransfer.getData("text/plain"); if (t) { $("#entrada").value = t; guardar("texto", t); actualizarCifras(); } }
 });
-document.addEventListener("visibilitychange", () => { if (!document.hidden && $("#lector").classList.contains("activo")) pantallaEncendida(true); });
+
+/* ---------------- Panel de ajustes ---------------- */
+function construirPanel() {
+  const cont = $("#sliders");
+  for (const [titulo, filas] of SLIDERS) {
+    const h = document.createElement("h3"); h.textContent = titulo; cont.appendChild(h);
+    for (const d of filas) {
+      const f = document.createElement("div"); f.className = "fila";
+      f.innerHTML = '<div class="cab"><label for="s_' + d.k + '">' + d.t + '</label><output id="o_' + d.k + '"></output></div>' +
+        '<input type="range" id="s_' + d.k + '" min="' + d.min + '" max="' + d.max + '" step="' + d.step + '">';
+      if (d.k === "ancho") { const q = document.createElement("div"); q.className = "ppl"; q.id = "ppl"; f.appendChild(q); }
+      cont.appendChild(f);
+      const inp = f.querySelector("input");
+      inp.addEventListener("input", () => {
+        S[d.k] = +inp.value;
+        if (d.colocar) document.body.classList.add("colocando");
+        aplicar();
+      });
+      const fin = () => document.body.classList.remove("colocando");
+      inp.addEventListener("change", fin); inp.addEventListener("pointerup", fin); inp.addEventListener("pointercancel", fin); inp.addEventListener("blur", fin);
+    }
+  }
+  const seg = $("#segColor");
+  COLORES.forEach((c, i) => {
+    const b = document.createElement("button"); b.dataset.v = i;
+    b.style.background = c.f; b.style.color = c.t; b.style.borderColor = "var(--ui-linea)";
+    b.innerHTML = 'Aa<br><span style="font-size:.66rem;font-weight:500">' + c.n + "</span>";
+    seg.appendChild(b);
+  });
+  seg.addEventListener("click", e => { const b = e.target.closest("button"); if (b) { S.color = +b.dataset.v; aplicar(); } });
+  $("#segAlin").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { S.alin = b.dataset.v; aplicar(); } });
+  $("#segAtras").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { S.atras = +b.dataset.v; aplicar(); } });
+  for (const b of $$("[data-sw]")) b.addEventListener("click", () => { S[b.dataset.sw] = !S[b.dataset.sw]; aplicar(); });
+}
+function refrescarPanel() {
+  for (const [, filas] of SLIDERS) for (const d of filas) {
+    const i = $("#s_" + d.k); if (i && document.activeElement !== i) i.value = S[d.k];
+    $("#o_" + d.k).textContent = d.f(S[d.k]);
+  }
+  for (const b of $$("[data-sw]")) b.setAttribute("aria-checked", String(!!S[b.dataset.sw]));
+  for (const b of $$("#segColor button")) b.setAttribute("aria-pressed", String(+b.dataset.v === S.color));
+  for (const b of $$("#segAlin button")) b.setAttribute("aria-pressed", String(b.dataset.v === S.alin));
+  for (const b of $$("#segAtras button")) b.setAttribute("aria-pressed", String(+b.dataset.v === S.atras));
+  $("#swVoz").setAttribute("aria-checked", String(voz.on));
+  $("#voz").setAttribute("aria-pressed", String(voz.on));
+  dibujarTeclas();
+}
+const NOMBRES_TECLA = { " ": "Espacio", "Enter": "Intro", "PageDown": "AvPág", "PageUp": "RePág", "ArrowDown": "↓", "ArrowUp": "↑",
+  "ArrowLeft": "←", "ArrowRight": "→", "Tab": "Tab", "Backspace": "Retroceso", "MediaTrackNext": "Pista sig.", "MediaTrackPrevious": "Pista ant." };
+const nombreTecla = k => NOMBRES_TECLA[k] || (k.length === 1 ? k.toUpperCase() : k);
+function dibujarTeclas() {
+  const cont = $("#teclas"); cont.textContent = "";
+  for (const k of Object.keys(S.teclas)) {
+    const f = document.createElement("div"); f.className = "tecla";
+    const kb = document.createElement("kbd"); kb.textContent = nombreTecla(k);
+    const sel = document.createElement("select"); sel.setAttribute("aria-label", "Acción de " + nombreTecla(k));
+    for (const a in ACCIONES) { const o = document.createElement("option"); o.value = a; o.textContent = ACCIONES[a]; sel.appendChild(o); }
+    sel.value = S.teclas[k];
+    sel.onchange = () => { S.teclas[k] = sel.value; guardarTodo(); };
+    const x = document.createElement("button"); x.className = "x fantasma"; x.textContent = "✕"; x.setAttribute("aria-label", "Quitar " + nombreTecla(k));
+    x.onclick = () => { delete S.teclas[k]; guardarTodo(); dibujarTeclas(); };
+    f.append(kb, sel, x); cont.appendChild(f);
+  }
+}
+let aprendiendo = false;
+$("#aprender").onclick = () => { aprendiendo = true; $("#aprender").textContent = "Pulsa la tecla del pedal… (Esc cancela)"; $("#aprender").blur(); };
+$("#restTeclas").onclick = () => { S.teclas = Object.assign({}, TECLAS_DEF); guardarTodo(); dibujarTeclas(); };
+$("#restTodo").onclick = () => {
+  if (!confirm("¿Restaurar todos los ajustes a sus valores iniciales?")) return;
+  for (const k in DEF) S[k] = (typeof DEF[k] === "object") ? Object.assign({}, DEF[k]) : DEF[k];
+  aplicar();
+};
+function abrirPanel() {
+  document.body.classList.add("panel"); $("#panel").setAttribute("aria-hidden", "false");
+  clearTimeout(ocultar); $("#lector").classList.add("ver"); refrescarPanel();
+}
+function cerrarPanel() {
+  document.body.classList.remove("panel", "colocando"); $("#panel").setAttribute("aria-hidden", "true");
+  aprendiendo = false; $("#aprender").textContent = "Añadir tecla…";
+  if (activo) mostrar();
+}
+/* ---- Colocar la columna con el dedo o el ratón ---- */
+const colocando = () => $("#lector").classList.contains("colocar");
+function entrarColocar() {
+  cerrarPanel(); rodar(false); cancelarCuenta();
+  $("#lector").classList.add("colocar"); $("#colocarB").textContent = "Listo"; mostrar(); etqColum();
+}
+function salirColocar() { $("#lector").classList.remove("colocar"); $("#colocarB").textContent = "Colocar"; }
+function etqColum() {
+  const e = $("#colum .etq"); if (!e) return;
+  e.textContent = S.ancho.toFixed(S.ancho % 1 ? 1 : 0) + " %  ·  arrastra el centro o los bordes";
+}
+$("#colocarB").onclick = () => colocando() ? salirColocar() : entrarColocar();
+$("#colocarP").onclick = () => { if (!activo) { estadoVoz(""); empezar(); if (!activo) return; } entrarColocar(); };
+(function () {
+  const col = $("#colum"); let g = null;
+  col.addEventListener("pointerdown", e => {
+    const W = $("#escena").clientWidth;
+    g = { id: e.pointerId, modo: e.target.classList.contains("i") ? "i" : e.target.classList.contains("d") ? "d" : "m",
+          x: e.clientX, l: col.offsetLeft, w: col.offsetWidth, W };
+    try { col.setPointerCapture(e.pointerId); } catch (x) {}
+    col.style.cursor = "grabbing"; e.preventDefault();
+  });
+  col.addEventListener("pointermove", e => {
+    if (!g || e.pointerId !== g.id) return;
+    const dx = e.clientX - g.x, minW = g.W * 0.03; let l = g.l, w = g.w;
+    if (g.modo === "m") l = entre(g.l + dx, 0, g.W - g.w);
+    else if (g.modo === "i") { const r = g.l + g.w; l = entre(g.l + dx, 0, r - minW); w = r - l; }
+    else w = entre(g.w + dx, minW, g.W - g.l);
+    S.ancho = entre(Math.round(w / g.W * 1000) / 10, 3, 100);
+    const wr = S.ancho / 100 * g.W, libre = g.W - wr;
+    const vis = libre > 0.5 ? entre(l / libre * 100, 0, 100) : 50;
+    S.lugar = Math.round((S.espejo ? 100 - vis : vis) * 10) / 10;
+    aplicar(); etqColum();
+  });
+  const fin = e => { if (g && e.pointerId === g.id) { g = null; col.style.cursor = ""; } };
+  col.addEventListener("pointerup", fin); col.addEventListener("pointercancel", fin);
+})();
+$("#abrirAjustes").onclick = abrirPanel; $("#abrirAjustesC").onclick = abrirPanel;
+$("#cerrarAjustes").onclick = cerrarPanel; $("#velo").onclick = cerrarPanel;
+
+/* ---------------- Botones del lector ---------------- */
+$("#rodar").onclick = alternar;
+$("#lento").onclick = () => { S.vel = Math.max(5, S.vel - 5); aplicar(); };
+$("#rapido").onclick = () => { S.vel = Math.min(300, S.vel + 5); aplicar(); };
+$("#menos").onclick = () => { S.tam = Math.max(12, S.tam - 2); aplicar(); };
+$("#mas").onclick = () => { S.tam = Math.min(200, S.tam + 2); aplicar(); };
+$("#inicio").onclick = inicio;
+$("#atrasB").onclick = () => atras(S.atras);
+$("#adelanteB").onclick = () => adelante(S.atras);
+$("#salir").onclick = salir;
+$("#voz").onclick = () => conmutarVoz();
+$("#swVoz").onclick = () => conmutarVoz();
+const pc = $("#pantallaCompleta");
+const root = document.documentElement;
+if (!(root.requestFullscreen || root.webkitRequestFullscreen)) pc.style.display = "none";
+pc.onclick = () => {
+  try {
+    if (document.fullscreenElement || document.webkitFullscreenElement) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    else (root.requestFullscreen || root.webkitRequestFullscreen).call(root);
+  } catch (e) {}
+};
+
+/* Toque en el texto: parar/seguir. Arrastre: desplazar a mano. */
+let tap = null;
+const pistaEl = $("#pista");
+pistaEl.addEventListener("pointerdown", e => { tap = { x: e.clientX, y: e.clientY, t: performance.now() }; mostrar(); });
+pistaEl.addEventListener("pointerup", e => {
+  if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 10 && performance.now() - tap.t < 500) alternar();
+  tap = null;
+});
+pistaEl.addEventListener("pointercancel", () => { tap = null; });
+$("#lector").addEventListener("pointermove", e => { if (e.pointerType === "mouse") { if (!ocultoRodando() || Math.abs(e.movementX) + Math.abs(e.movementY) > 2) mostrar(); } });
+$("#lector").addEventListener("pointerdown", mostrar);
+
+/* ---------------- Teclado y pedal ---------------- */
+function ejecutar(a) {
+  switch (a) {
+    case "alterna": alternar(); break;
+    case "rodar": seguir(); break;
+    case "parar": parar(); break;
+    case "atras": atras(S.atras); break;
+    case "frase": atrasFrase(); break;
+    case "adelante": adelante(S.atras); break;
+    case "inicio": inicio(); break;
+    case "velmas": $("#rapido").click(); break;
+    case "velmenos": $("#lento").click(); break;
+  }
+}
+document.addEventListener("keydown", ev => {
+  const k = ev.key;
+  if (aprendiendo) {
+    ev.preventDefault();
+    aprendiendo = false; $("#aprender").textContent = "Añadir tecla…";
+    if (k !== "Escape" && k !== "Shift" && k !== "Control" && k !== "Alt" && k !== "Meta") { if (!S.teclas[k]) S.teclas[k] = "alterna"; guardarTodo(); dibujarTeclas(); }
+    return;
+  }
+  if (k === "Escape") {
+    if (colocando()) { salirColocar(); ev.preventDefault(); return; }
+    if (document.body.classList.contains("panel")) { cerrarPanel(); ev.preventDefault(); }
+    else if (activo) { salir(); ev.preventDefault(); }
+    return;
+  }
+  if (!activo || document.body.classList.contains("panel")) return;
+  const tg = ev.target, tag = tg && tg.tagName;
+  if (tag === "SELECT" || tag === "TEXTAREA" || (tag === "INPUT" && tg.type !== "range")) return;
+  if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+  const a = S.teclas[k];
+  if (a) {
+    ev.preventDefault();
+    if (tag === "BUTTON" || tag === "INPUT") tg.blur();
+    if (!ev.repeat || a === "atras" || a === "adelante") ejecutar(a);
+    mostrar();
+    return;
+  }
+  if (k === "+" || k === "=") { $("#mas").click(); ev.preventDefault(); }
+  else if (k === "-" || k === "_") { $("#menos").click(); ev.preventDefault(); }
+  else if (k === "]") { $("#rapido").click(); ev.preventDefault(); }
+  else if (k === "[") { $("#lento").click(); ev.preventDefault(); }
+  else if (k === "Home") { inicio(); ev.preventDefault(); }
+});
+
+document.addEventListener("visibilitychange", () => { if (!document.hidden && activo) pantallaEncendida(true); });
+window.addEventListener("resize", () => { if (activo) { aplicar(); medir(); } });
+window.addEventListener("orientationchange", () => setTimeout(() => { if (activo) { aplicar(); medir(); } }, 250));
+
+/* ---------------- Modo voz (experimental) ---------------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const voz = { on: false, rec: null, pos: 0, obj: null, fallos: 0, reinicio: 0 };
+
+function estadoVoz(t) { $("#estadovoz").textContent = t; }
+function dist1(a, b) { // ¿distancia de edición <= 1?
+  if (a === b) return true;
+  const la = a.length, lb = b.length;
+  if (Math.abs(la - lb) > 1) return false;
+  let i = 0, j = 0, d = 0;
+  while (i < la && j < lb) {
+    if (a[i] === b[j]) { i++; j++; continue; }
+    if (++d > 1) return false;
+    if (la > lb) i++; else if (lb > la) j++; else { i++; j++; }
+  }
+  return d + (la - i) + (lb - j) <= 1;
+}
+function igual(a, b) {
+  if (a === b) return true;
+  const m = Math.min(a.length, b.length);
+  if (m >= 4 && (a.startsWith(b) || b.startsWith(a))) return true;
+  return m >= 5 && dist1(a, b);
+}
+function vozResync(posicion) {
+  if (!voz.on || !P.length) return;
+  voz.pos = palabraEnLinea(posicion === undefined ? pos : posicion);
+  voz.obj = null;
+}
+function localiza(hyp) {
+  const m = Math.min(hyp.length, 5);
+  if (!m || !P.length) return;
+  const h = hyp.slice(-m);
+  const lo = Math.max(m - 1, voz.pos - 10), hi = Math.min(P.length - 1, voz.pos + 60);
+  let mejor = -1, ms = 0, md = 1e9;
+  for (let e = lo; e <= hi; e++) {
+    let sc = 0;
+    for (let j = 0; j < m; j++) {
+      const w = P[e - j]; if (w === undefined) break;
+      if (igual(h[m - 1 - j], w)) sc += j === 0 ? 1.2 : 1;
+    }
+    const d = Math.abs(e - voz.pos);
+    if (sc > ms || (sc === ms && sc > 0 && d < md)) { ms = sc; mejor = e; md = d; }
+  }
+  if (mejor < 0) return;
+  const adelantado = mejor - voz.pos;
+  let ok;
+  if (m === 1) ok = ms >= 1.2 && adelantado >= 0 && adelantado <= 6;
+  else if (adelantado < -2) ok = ms >= m * 0.9 && m >= 4;      // volver atrás exige coincidencia casi total
+  else if (adelantado > 20) ok = ms >= Math.min(3, m) ;          // saltar lejos exige más pruebas
+  else ok = ms >= Math.min(2, m);
+  if (!ok) return;
+  const retro = mejor + 1 < voz.pos - 2;
+  voz.pos = mejor + 1;
+  const d = destinoPalabra(mejor);
+  if (retro || voz.obj === null || d > voz.obj) voz.obj = d;
+}
+function procesaResultado(ev) {
+  let txt = "";
+  for (let i = 0; i < ev.results.length; i++) txt += " " + ev.results[i][0].transcript;
+  const hyp = norm(txt);
+  if (hyp.length) { voz.fallos = 0; estadoVoz("Escuchando…"); localiza(hyp.slice(-6)); }
+}
+function lanzaVoz() {
+  if (!voz.on || !SR) return;
+  let r;
+  try {
+    r = new SR();
+    r.lang = "es-ES"; r.continuous = true; r.interimResults = true; r.maxAlternatives = 1;
+    r.onresult = procesaResultado;
+    r.onstart = () => { if (voz.rec === r) estadoVoz("Escuchando…"); };
+    r.onerror = e => {
+      if (voz.rec !== r) return;
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+        estadoVoz("No hay permiso para usar el micrófono o el reconocimiento. Revisa los permisos del navegador.");
+        vozApagar(true);
+      } else if (e.error === "network") { voz.fallos++; estadoVoz("Sin conexión con el servicio de reconocimiento; reintentando…"); }
+      else if (e.error === "audio-capture") { estadoVoz("No se detecta micrófono."); vozApagar(true); }
+    };
+    r.onend = () => {
+      if (voz.rec !== r || !voz.on) return;
+      estadoVoz("Reiniciando el reconocimiento…");
+      voz.fallos++;
+      clearTimeout(voz.reinicio);
+      voz.reinicio = setTimeout(lanzaVoz, Math.min(3000, 250 + voz.fallos * 150));
+    };
+    voz.rec = r; r.start();
+  } catch (e) {
+    voz.reinicio = setTimeout(lanzaVoz, 1000);
+  }
+}
+function vozApagar(aviso) {
+  const r = voz.rec; voz.on = false; voz.rec = null; voz.obj = null; clearTimeout(voz.reinicio);
+  if (r) { try { r.onend = null; r.onerror = null; r.onresult = null; r.abort(); } catch (e) {} }
+  if (!aviso) estadoVoz("");
+  etiquetaRodar(); refrescarPanel();
+}
+function conmutarVoz() {
+  if (voz.on) { vozApagar(); return; }
+  if (!SR) { estadoVoz("Este navegador no ofrece reconocimiento de voz; usa el pedal o el modo normal."); mostrarAvisoVoz("Este navegador no ofrece reconocimiento de voz."); return; }
+  if (!activo) { estadoVoz("Empieza el guion y activa la voz desde el lector."); return; }
+  voz.on = true; voz.fallos = 0; voz.pos = palabraEnLinea(); voz.obj = null;
+  rodar(false); estadoVoz("Pidiendo micrófono…");
+  lanzaVoz(); etiquetaRodar(); refrescarPanel();
+  mostrarAvisoVoz("Voz activada: pulsa Rodar para que te siga.");
+}
+function mostrarAvisoVoz(t) { const i = $("#info"); i.textContent = t; ultimoHud = performance.now() + 2500; }
+
+construirPanel();
+aplicar();
 </script>
 </body>
 </html>
