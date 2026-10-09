@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Escucha">
+<meta name="theme-color" content="#faf9f6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1c1c1b" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="iconos/icono-180.png">
+<link rel="icon" href="iconos/icono.svg" type="image/svg+xml">
+<title>Escucha</title>
+<style>
+:root{--fondo:#faf9f6;--caja:#f0eee6;--texto:#262625;--suave:#6b6a63;--linea:#e2dfd6;--acento:#3d5a2a;--barra:#ffffffee}
+@media (prefers-color-scheme:dark){:root{--fondo:#1c1c1b;--caja:#262624;--texto:#ecebe6;--suave:#a3a199;--linea:#34332f;--acento:#9cc27c;--barra:#232321ee}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--fondo);color:var(--texto);font:17px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-text-size-adjust:100%}
+main{max-width:760px;margin:0 auto;padding:16px 16px 190px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:env(safe-area-inset-top)}
+h1{font-size:1.4rem;margin:8px 0;letter-spacing:-.02em}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.boton{padding:8px 12px;border-radius:10px;background:var(--caja)}
+.boton:active{opacity:.6}
+.pequeno{font-size:.8rem;color:var(--suave)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 12px}
+.chip{padding:5px 11px;border-radius:999px;background:var(--caja);font-size:.85rem}
+.chip.activo{background:var(--texto);color:var(--fondo)}
+ul{list-style:none;margin:0;padding:0}
+li.ep{padding:12px 0;border-top:1px solid var(--linea);cursor:pointer}
+li.ep:last-child{border-bottom:1px solid var(--linea)}
+li.ep.oido{opacity:.45}
+li.ep.sonando .tit{color:var(--acento)}
+.tit{font-weight:600;line-height:1.3}
+.meta{font-size:.8rem;color:var(--suave);margin-top:2px}
+.prog{height:3px;background:var(--linea);border-radius:2px;margin-top:6px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--acento)}
+.cerrado{min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px}
+.cerrado b{font-size:1.6rem}
+#reproductor{position:fixed;left:0;right:0;bottom:0;background:var(--barra);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--linea);padding:10px 16px calc(12px + env(safe-area-inset-bottom))}
+#reproductor[hidden]{display:none}
+.rp{max-width:760px;margin:0 auto}
+#rtit{font-weight:600;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#rprog{font-size:.75rem;color:var(--suave);margin:0 0 2px}
+input[type=range]{width:100%;accent-color:var(--acento);margin:4px 0}
+.tiempos{display:flex;justify-content:space-between;font-size:.75rem;color:var(--suave);font-variant-numeric:tabular-nums}
+.mandos{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:4px}
+.mandos button{display:flex;align-items:center;justify-content:center}
+.salto{width:52px;height:52px;border-radius:50%;background:var(--caja);font-size:.85rem;font-weight:600}
+#play{width:64px;height:64px;border-radius:50%;background:var(--texto);color:var(--fondo);font-size:1.6rem}
+#vel{min-width:58px;height:40px;border-radius:10px;background:var(--caja);font-weight:600;font-size:.9rem}
+dialog{border:0;border-radius:14px;background:var(--fondo);color:var(--texto);max-width:min(560px,92vw);padding:18px}
+dialog::backdrop{background:#0006}
+dialog input[type=text],dialog input[type=url]{width:100%;font:inherit;padding:8px;border-radius:8px;border:1px solid var(--linea);background:var(--caja);color:var(--texto);margin:3px 0}
+.fila{display:flex;gap:6px;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--linea)}
+.atajos{font-size:.75rem;color:var(--suave);text-align:center;margin-top:6px}
+@media (max-width:600px){.atajos{display:none}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Escucha</h1>
+    <div style="display:flex;gap:6px">
+      <button class="boton" id="actualizar" title="Volver a leer los feeds">Actualizar</button>
+      <button class="boton" id="ajustes" title="Feeds de este aparato" aria-label="Ajustes">⚙︎</button>
+    </div>
+  </header>
+  <div id="contenido"></div>
+</main>
+
+<div id="reproductor" hidden>
+  <div class="rp">
+    <div id="rprog"></div>
+    <div id="rtit"></div>
+    <input type="range" id="barra" min="0" max="1000" value="0" aria-label="Posición">
+    <div class="tiempos"><span id="tlleva">0:00</span><span id="tqueda">-0:00</span></div>
+    <div class="mandos">
+      <button class="salto" id="atras" aria-label="Retroceder 15 segundos">−15</button>
+      <button id="play" aria-label="Reproducir">▶</button>
+      <button class="salto" id="adelante" aria-label="Avanzar 30 segundos">+30</button>
+      <button id="vel" aria-label="Velocidad">1×</button>
+    </div>
+    <div class="atajos">espacio: pausa · ← −15 s · → +30 s · V: velocidad</div>
+  </div>
+</div>
+<audio id="audio" preload="metadata"></audio>
+
+<dialog id="dlg">
+  <h2 style="margin-top:0;font-size:1.1rem">Feeds de este aparato</h2>
+  <p class="pequeno">Se guardan solo aquí, no en la web. En otro aparato, ábrelo con tu enlace de configuración.</p>
+  <div id="lista-feeds"></div>
+  <form id="nuevo" style="margin-top:10px">
+    <input type="text" id="nnombre" placeholder="Nombre del pódcast" required>
+    <input type="url" id="nurl" placeholder="Dirección del feed RSS" required>
+    <div style="display:flex;gap:6px;justify-content:space-between;margin-top:6px">
+      <button class="boton" type="submit">Añadir</button>
+      <button class="boton" type="button" id="cerrar">Cerrar</button>
+    </div>
+  </form>
+  <p class="pequeno" style="margin-top:12px">Enlace para llevar estos feeds a otro aparato:
+    <button class="boton" type="button" id="copiar" style="font-size:.8rem;padding:4px 8px">Copiar enlace</button></p>
+</dialog>
+
+<script>
+"use strict";
+// ---------- Ajustes ----------
+const ABRE = 16, CIERRA = 18;                 // franja, hora de Madrid
+const VELOCIDADES = [1, 1.1, 1.25, 1.5, 1.75, 2];
+const POR_FEED = 60;
+const OCULTAR = /exclusivo para mecenas/i;    // avances de pago: fuera
+const ATRAS = 15, ADELANTE = 30, RETOMAR = 5;
+const K = "escucha.";
+
+const $ = s => document.querySelector(s);
+const audio = $("#audio");
+const leer = (k, d) => { try { const v = localStorage.getItem(K + k); return v === null ? d : JSON.parse(v); } catch { return d; } };
+const guardar = (k, v) => { try { localStorage.setItem(K + k, JSON.stringify(v)); } catch {} };
+
+// ---------- Hora de Madrid ----------
+function madrid() {
+  const p = new Intl.DateTimeFormat("es-ES", {timeZone: "Europe/Madrid", year: "numeric", month: "2-digit",
+    day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23"}).formatToParts(new Date());
+  const g = t => p.find(x => x.type === t).value;
+  return {dia: `${g("year")}-${g("month")}-${g("day")}`, hora: +g("hour"), min: +g("minute")};
+}
+// Para probar fuera de la franja (solo desde la consola): localStorage["escucha.prueba"] = Date.now() + 600000
+const abierto = () => { if (leer("prueba", 0) > Date.now()) return true; const m = madrid(); return m.hora >= ABRE && m.hora < CIERRA; };
+
+// ---------- Configuración privada (#config=…) ----------
+function importarDeEnlace() {
+  const m = location.hash.match(/config=([^&]+)/);
+  if (!m) return;
+  try {
+    const b64 = m[1].replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(escape(atob(b64)));
+    const feeds = JSON.parse(json);
+    if (Array.isArray(feeds) && feeds.every(f => f.url && f.nombre)) {
+      guardar("feeds", feeds.map((f, i) => ({id: f.id || "f" + i, nombre: f.nombre, url: f.url})));
+      guardar("cache", null);
+    }
+  } catch {}
+  history.replaceState(null, "", location.pathname);   // el enlace no se queda a la vista
+}
+function enlaceConfig() {
+  const json = JSON.stringify(leer("feeds", []));
+  const b64 = btoa(unescape(encodeURIComponent(json))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return location.origin + location.pathname + "#config=" + b64;
+}
+
+// ---------- Leer feeds ----------
+const limpio = t => (t || "").replace(/\W+/g, "").toLowerCase();
+function durSeg(v) { if (!v) return 0; return v.split(":").reduce((s, p) => s * 60 + (+p || 0), 0); }
+async function leerFeed(f) {
+  const r = await fetch(f.url, {cache: "no-store"});
+  if (!r.ok) throw new Error(r.status);
+  const xml = new DOMParser().parseFromString(await r.text(), "text/xml");
+  const out = [];
+  for (const it of xml.querySelectorAll("item")) {
+    const titulo = it.querySelector("title")?.textContent.trim() || "";
+    const enc = it.querySelector("enclosure");
+    if (!enc || !enc.getAttribute("url") || OCULTAR.test(titulo)) continue;
+    const fecha = new Date(it.querySelector("pubDate")?.textContent || 0);
+    if (isNaN(fecha)) continue;
+    const dur = [...it.children].find(c => c.localName === "duration")?.textContent;
+    out.push({id: it.querySelector("guid")?.textContent.trim() || enc.getAttribute("url"), programa: f.id,
+      titulo, fecha: fecha.toISOString(), audio: enc.getAttribute("url"), duracion: durSeg(dur)});
+    if (out.length >= POR_FEED) break;
+  }
+  return out;
+}
+async function actualizar(forzar) {
+  const feeds = leer("feeds", []);
+  const hoy = madrid().dia, cache = leer("cache", null);
+  if (!forzar && cache && cache.dia === hoy) return cache;
+  const vistos = new Set(), todos = [], fallos = [];
+  const res = await Promise.allSettled(feeds.map(leerFeed));
+  res.forEach((r, i) => {
+    if (r.status !== "fulfilled") { fallos.push(feeds[i].nombre); return; }
+    for (const e of r.value) { const k = limpio(e.titulo); if (vistos.has(k)) continue; vistos.add(k); todos.push(e); }
+  });
+  if (!todos.length && cache) return {...cache, fallos};
+  todos.sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const nueva = {dia: hoy, episodios: todos, fallos};
+  guardar("cache", nueva);
+  return nueva;
+}
+
+// ---------- Utilidades ----------
+const hms = s => { s = Math.max(0, Math.floor(s || 0)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+  return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); };
+const fechaCorta = iso => new Date(iso).toLocaleDateString("es-ES", {timeZone: "Europe/Madrid", weekday: "short", day: "numeric", month: "short"});
+const nombrePrograma = id => (leer("feeds", []).find(f => f.id === id) || {}).nombre || "";
+const posicion = id => leer("pos." + id, null);   // {t, d, fin}
+const escapar = s => s.replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+
+// ---------- Pantalla ----------
+let datos = null, filtro = leer("filtro", "todos"), actual = null;
+
+function pintar() {
+  const c = $("#contenido"), feeds = leer("feeds", []);
+  if (!feeds.length) {
+    c.innerHTML = `<div class="cerrado"><b>Sin feeds en este aparato</b><span class="pequeno">Ábrelo con tu enlace de configuración, o añade un feed en ⚙︎.</span></div>`;
+    return;
+  }
+  if (!abierto() && !(actual && !audio.paused)) {
+    c.innerHTML = `<div class="cerrado"><b>Vuelve a las ${ABRE}:00</b><span class="pequeno">Abierto de ${ABRE}:00 a ${CIERRA}:00.</span></div>`;
+    $("#actualizar").hidden = true;
+    return;
+  }
+  $("#actualizar").hidden = false;
+  if (!datos) { c.innerHTML = `<p class="pequeno">Leyendo los feeds…</p>`; return; }
+  const chips = [{id: "todos", nombre: "Todos"}, ...feeds].map(f =>
+    `<button class="chip${filtro === f.id ? " activo" : ""}" data-filtro="${f.id}">${escapar(f.nombre)}</button>`).join("");
+  const eps = datos.episodios.filter(e => filtro === "todos" || e.programa === filtro);
+  const items = eps.map(e => {
+    const p = posicion(e.id), d = e.duracion || p?.d || 0, pct = p && d ? Math.min(100, p.t / d * 100) : 0;
+    const clase = (p?.fin ? " oido" : "") + (actual?.id === e.id ? " sonando" : "");
+    return `<li class="ep${clase}" data-id="${escapar(e.id)}"><div class="tit">${escapar(e.titulo)}</div>
+      <div class="meta">${escapar(nombrePrograma(e.programa))} · ${fechaCorta(e.fecha)}${d ? " · " + hms(d) : ""}${p && !p.fin && p.t > 5 ? " · quedan " + hms(d - p.t) : ""}</div>
+      ${pct && !p.fin ? `<div class="prog"><i style="width:${pct}%"></i></div>` : ""}</li>`;
+  }).join("");
+  const aviso = datos.fallos?.length ? `<p class="pequeno">No se pudo leer: ${datos.fallos.map(escapar).join(", ")}.</p>` : "";
+  c.innerHTML = `<div class="chips">${chips}</div>${aviso}<ul>${items || '<li class="pequeno">Nada por aquí.</li>'}</ul>`;
+}
+
+$("#contenido").addEventListener("click", ev => {
+  const chip = ev.target.closest("[data-filtro]");
+  if (chip) { filtro = chip.dataset.filtro; guardar("filtro", filtro); pintar(); return; }
+  const li = ev.target.closest("li.ep");
+  if (li) { const e = datos.episodios.find(x => x.id === li.dataset.id); if (e) cargar(e, true); }
+});
+
+// ---------- Reproductor ----------
+function velocidad(programa) { return leer("vel." + programa, 1); }
+function ponerVelocidad(v) {
+  audio.playbackRate = v; audio.preservesPitch = true; audio.webkitPreservesPitch = true;
+  $("#vel").textContent = String(v).replace(".", ",") + "×";
+  if (actual) guardar("vel." + actual.programa, v);
+  refrescarTiempos();
+}
+function cargar(e, tocar) {
+  if (actual?.id === e.id) { tocar && alternar(); return; }
+  if (!abierto()) return;                     // fuera de la franja no se empieza nada nuevo
+  guardarPosicion();
+  actual = e; guardar("actual", e);
+  audio.src = e.audio;
+  const p = posicion(e.id);
+  const inicio = p && !p.fin ? Math.max(0, p.t - RETOMAR) : 0;
+  audio.addEventListener("loadedmetadata", () => { audio.currentTime = inicio; ponerVelocidad(velocidad(e.programa)); }, {once: true});
+  $("#reproductor").hidden = false;
+  $("#rtit").textContent = e.titulo;
+  $("#rprog").textContent = nombrePrograma(e.programa) + " · " + fechaCorta(e.fecha);
+  if ("mediaSession" in navigator) navigator.mediaSession.metadata = new MediaMetadata({title: e.titulo, artist: nombrePrograma(e.programa), album: "Escucha",
+    artwork: [{src: "iconos/icono-512.png", sizes: "512x512", type: "image/png"}]});
+  if (tocar) audio.play().catch(() => {});
+  pintar();
+}
+function alternar() { if (!actual) return; audio.paused ? (abierto() || audio.currentTime > 0 ? audio.play() : null) : audio.pause(); }
+function saltar(s) { if (actual) audio.currentTime = Math.max(0, Math.min((audio.duration || 1e9) - 1, audio.currentTime + s)); }
+function guardarPosicion() {
+  if (!actual || !audio.duration) return;
+  const fin = audio.currentTime > audio.duration - 30;
+  guardar("pos." + actual.id, {t: audio.currentTime, d: audio.duration, fin});
+}
+function refrescarTiempos() {
+  const d = audio.duration || actual?.duracion || 0, t = audio.currentTime || 0, r = audio.playbackRate || 1;
+  $("#tlleva").textContent = hms(t);
+  $("#tqueda").textContent = "-" + hms((d - t) / r);
+  if (!arrastrando && d) $("#barra").value = Math.round(t / d * 1000);
+  if ("mediaSession" in navigator && d && isFinite(d)) try { navigator.mediaSession.setPositionState({duration: d, position: Math.min(t, d), playbackRate: r}); } catch {}
+}
+let arrastrando = false;
+$("#barra").addEventListener("input", () => { arrastrando = true; const d = audio.duration || 0; $("#tlleva").textContent = hms($("#barra").value / 1000 * d); });
+$("#barra").addEventListener("change", () => { const d = audio.duration || 0; if (d) audio.currentTime = $("#barra").value / 1000 * d; arrastrando = false; });
+$("#play").onclick = alternar;
+$("#atras").onclick = () => saltar(-ATRAS);
+$("#adelante").onclick = () => saltar(ADELANTE);
+$("#vel").onclick = () => { const i = VELOCIDADES.indexOf(audio.playbackRate); ponerVelocidad(VELOCIDADES[(i + 1) % VELOCIDADES.length]); };
+audio.addEventListener("play", () => { $("#play").textContent = "❚❚"; $("#play").setAttribute("aria-label", "Pausa"); });
+audio.addEventListener("pause", () => { $("#play").textContent = "▶"; $("#play").setAttribute("aria-label", "Reproducir"); guardarPosicion(); pintar(); });
+audio.addEventListener("timeupdate", refrescarTiempos);
+audio.addEventListener("ended", () => { guardarPosicion(); pintar(); });
+setInterval(() => { if (!audio.paused) guardarPosicion(); }, 5000);
+window.addEventListener("pagehide", guardarPosicion);
+document.addEventListener("visibilitychange", () => { if (document.hidden) guardarPosicion(); else arrancar(false); });
+
+if ("mediaSession" in navigator) {
+  const ms = navigator.mediaSession;
+  ms.setActionHandler("play", () => audio.play());
+  ms.setActionHandler("pause", () => audio.pause());
+  ms.setActionHandler("seekbackward", d => saltar(-(d?.seekOffset || ATRAS)));
+  ms.setActionHandler("seekforward", d => saltar(d?.seekOffset || ADELANTE));
+  try { ms.setActionHandler("seekto", d => { audio.currentTime = d.seekTime; }); } catch {}
+  try { ms.setActionHandler("previoustrack", () => saltar(-ATRAS)); ms.setActionHandler("nexttrack", () => saltar(ADELANTE)); } catch {}
+}
+document.addEventListener("keydown", ev => {
+  if (ev.target.closest("input, textarea, dialog[open]") || ev.metaKey || ev.ctrlKey) return;
+  if (ev.key === " ") { ev.preventDefault(); alternar(); }
+  else if (ev.key === "ArrowLeft") saltar(-ATRAS);
+  else if (ev.key === "ArrowRight") saltar(ADELANTE);
+  else if (ev.key.toLowerCase() === "v") $("#vel").click();
+});
+
+// ---------- Ajustes ----------
+function pintarFeeds() {
+  $("#lista-feeds").innerHTML = leer("feeds", []).map((f, i) =>
+    `<div class="fila"><span>${escapar(f.nombre)}</span><button class="boton" data-quitar="${i}" style="font-size:.8rem;padding:4px 8px">Quitar</button></div>`).join("")
+    || `<p class="pequeno">Ninguno todavía.</p>`;
+}
+$("#ajustes").onclick = () => { pintarFeeds(); $("#dlg").showModal(); };
+$("#cerrar").onclick = () => { $("#dlg").close(); arrancar(true); };
+$("#lista-feeds").addEventListener("click", ev => {
+  const b = ev.target.closest("[data-quitar]"); if (!b) return;
+  const f = leer("feeds", []); f.splice(+b.dataset.quitar, 1); guardar("feeds", f); guardar("cache", null); pintarFeeds();
+});
+$("#nuevo").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const f = leer("feeds", []);
+  f.push({id: "f" + Date.now().toString(36), nombre: $("#nnombre").value.trim(), url: $("#nurl").value.trim()});
+  guardar("feeds", f); guardar("cache", null); $("#nuevo").reset(); pintarFeeds();
+});
+$("#copiar").onclick = async () => {
+  try { await navigator.clipboard.writeText(enlaceConfig()); $("#copiar").textContent = "Copiado"; }
+  catch { prompt("Copia este enlace:", enlaceConfig()); }
+};
+$("#actualizar").onclick = () => arrancar(true);
+
+// ---------- Arranque ----------
+async function arrancar(forzar) {
+  pintar();
+  if (!abierto() || !leer("feeds", []).length) return;
+  datos = leer("cache", null);
+  if (datos && datos.dia === madrid().dia && !forzar) { pintar(); return; }
+  if (!datos) pintar();
+  datos = await actualizar(forzar);
+  pintar();
+}
+importarDeEnlace();
+const previo = leer("actual", null);
+if (previo) {   // dejar preparado el último episodio, sin sonar
+  actual = previo; audio.src = previo.audio; $("#reproductor").hidden = false;
+  $("#rtit").textContent = previo.titulo; $("#rprog").textContent = nombrePrograma(previo.programa) + " · " + fechaCorta(previo.fecha);
+  const p = posicion(previo.id);
+  audio.addEventListener("loadedmetadata", () => { audio.currentTime = p && !p.fin ? Math.max(0, p.t - RETOMAR) : 0; ponerVelocidad(velocidad(previo.programa)); refrescarTiempos(); }, {once: true});
+}
+arrancar(false);
+setInterval(() => pintar(), 60000);   // a las 16:00 se abre y a las 18:00 se cierra sola
+</script>
+</body>
+</html>

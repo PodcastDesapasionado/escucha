@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Prompter">
+<link rel="apple-touch-icon" href="iconos/icono-180.png">
+<title>Teleprompter</title>
+<style>
+:root{--fondo:#111;--texto:#f2f0ea;--suave:#9a978e;--caja:#222;--guia:#e8c46a55}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--fondo);color:var(--texto);font-family:-apple-system,BlinkMacSystemFont,sans-serif}
+button,select{font:inherit;color:inherit;background:var(--caja);border:0;border-radius:9px;padding:8px 12px;cursor:pointer}
+#carga{max-width:760px;margin:0 auto;padding:20px 16px}
+#carga h1{font-size:1.3rem}
+textarea{width:100%;height:50vh;font:16px/1.5 ui-monospace,monospace;background:var(--caja);color:var(--texto);border:0;border-radius:10px;padding:12px}
+.pequeno{color:var(--suave);font-size:.85rem}
+#lector{position:fixed;inset:0;display:none}
+#lector.activo{display:block}
+#pista{position:absolute;inset:0;overflow-y:scroll;scrollbar-width:none;padding:45vh 7vw 60vh}
+#pista::-webkit-scrollbar{display:none}
+#texto{max-width:1100px;margin:0 auto;font-weight:500;line-height:1.45;white-space:pre-wrap}
+#texto h2{font-size:.8em;color:var(--suave);margin:1.4em 0 .3em}
+#texto.espejo{transform:scaleX(-1)}
+#guia{position:absolute;left:0;right:0;top:40vh;height:1.6em;border-top:2px solid var(--guia);border-bottom:2px solid var(--guia);pointer-events:none}
+#barra{position:absolute;left:0;right:0;bottom:0;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center;padding:10px 10px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(transparent,#000c 40%);transition:opacity .4s}
+#lector.rodando #barra{opacity:.15}
+#lector.rodando #barra:hover{opacity:1}
+#barra span{color:var(--suave);font-size:.8rem;min-width:4.5em;text-align:center}
+</style>
+</head>
+<body>
+<section id="carga">
+  <h1>Teleprompter</h1>
+  <p class="pequeno">Abre tu guion o pégalo aquí. El texto se queda en este aparato: no se sube a ningún sitio.
+    Lo que vaya después de una línea <code>---</code> no se muestra (material final).</p>
+  <p><input type="file" id="fichero" accept=".md,.txt,text/plain,text/markdown"></p>
+  <textarea id="entrada" placeholder="…o pega aquí el guion"></textarea>
+  <p><button id="empezar">Empezar ▶</button> <button id="borrar">Borrar el texto guardado</button></p>
+  <p class="pequeno">Atajos: espacio = rodar o parar · ↑ ↓ = más o menos rápido · + − = letra · ← = volver atrás un poco · Esc = salir.</p>
+</section>
+
+<section id="lector">
+  <div id="pista"><div id="texto"></div></div>
+  <div id="guia"></div>
+  <div id="barra">
+    <button id="rodar">▶ Rodar</button>
+    <button id="lento">− vel</button><span id="velv"></span><button id="rapido">+ vel</button>
+    <button id="menos">A−</button><span id="tamv"></span><button id="mas">A+</button>
+    <button id="espejo">Espejo</button>
+    <button id="arriba">⤒ Inicio</button>
+    <button id="salir">Salir</button>
+  </div>
+</section>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const K = "prompter.";
+const leer = (k, d) => { try { const v = localStorage.getItem(K + k); return v === null ? d : JSON.parse(v); } catch { return d; } };
+const guardar = (k, v) => { try { localStorage.setItem(K + k, JSON.stringify(v)); } catch {} };
+
+let vel = leer("vel", 40);      // píxeles por segundo
+let tam = leer("tam", 56);      // tamaño de letra
+let espejo = leer("espejo", false);
+let rodando = false, ultimo = 0, resto = 0;
+
+$("#entrada").value = leer("texto", "");
+$("#fichero").addEventListener("change", async ev => {
+  const f = ev.target.files[0]; if (!f) return;
+  $("#entrada").value = await f.text(); guardar("texto", $("#entrada").value);
+});
+$("#entrada").addEventListener("input", () => guardar("texto", $("#entrada").value));
+$("#borrar").onclick = () => { $("#entrada").value = ""; guardar("texto", ""); };
+
+function escapar(s) { return s.replace(/[&<>]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;"}[c])); }
+function preparar(md) {
+  const lineas = md.replace(/\r/g, "").split("\n");
+  const corte = lineas.findIndex(l => /^\s*---\s*$/.test(l));
+  const util = corte >= 0 ? lineas.slice(0, corte) : lineas;
+  return util.map(l => {
+    if (/^#{1,6}\s/.test(l)) return "<h2>" + escapar(l.replace(/^#+\s*/, "")) + "</h2>";
+    return escapar(l.replace(/\*\*|__|\*|_|`/g, "").replace(/^\s*[-*]\s+/, "• ").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1"));
+  }).join("\n").replace(/\n{3,}/g, "\n\n");
+}
+function aplicar() {
+  $("#texto").style.fontSize = tam + "px";
+  $("#texto").classList.toggle("espejo", espejo);
+  $("#velv").textContent = vel + " px/s";
+  $("#tamv").textContent = tam + " px";
+  guardar("vel", vel); guardar("tam", tam); guardar("espejo", espejo);
+}
+function paso(t) {
+  if (!rodando) return;
+  const dt = ultimo ? (t - ultimo) / 1000 : 0; ultimo = t;
+  resto += vel * dt;
+  const n = Math.floor(resto);
+  if (n) { $("#pista").scrollTop += n; resto -= n; }
+  requestAnimationFrame(paso);
+}
+function rodar(si) {
+  rodando = si; ultimo = 0;
+  $("#rodar").textContent = si ? "❚❚ Parar" : "▶ Rodar";
+  $("#lector").classList.toggle("rodando", si);
+  if (si) requestAnimationFrame(paso);
+}
+let bloqueo = null;
+async function pantallaEncendida(si) {
+  try { if (si && "wakeLock" in navigator) bloqueo = await navigator.wakeLock.request("screen"); else if (bloqueo) { await bloqueo.release(); bloqueo = null; } } catch {}
+}
+$("#empezar").onclick = () => {
+  guardar("texto", $("#entrada").value);
+  $("#texto").innerHTML = preparar($("#entrada").value);
+  $("#carga").style.display = "none"; $("#lector").classList.add("activo");
+  $("#pista").scrollTop = 0; aplicar(); pantallaEncendida(true);
+};
+function salir() { rodar(false); pantallaEncendida(false); $("#lector").classList.remove("activo"); $("#carga").style.display = ""; }
+$("#rodar").onclick = () => rodar(!rodando);
+$("#lento").onclick = () => { vel = Math.max(5, vel - 5); aplicar(); };
+$("#rapido").onclick = () => { vel = Math.min(300, vel + 5); aplicar(); };
+$("#menos").onclick = () => { tam = Math.max(20, tam - 4); aplicar(); };
+$("#mas").onclick = () => { tam = Math.min(140, tam + 4); aplicar(); };
+$("#espejo").onclick = () => { espejo = !espejo; aplicar(); };
+$("#arriba").onclick = () => { $("#pista").scrollTop = 0; };
+$("#salir").onclick = salir;
+$("#pista").addEventListener("click", () => rodar(!rodando));
+document.addEventListener("keydown", ev => {
+  if (!$("#lector").classList.contains("activo")) return;
+  const k = ev.key;
+  if (k === " ") { ev.preventDefault(); rodar(!rodando); }
+  else if (k === "ArrowUp") { ev.preventDefault(); $("#rapido").click(); }
+  else if (k === "ArrowDown") { ev.preventDefault(); $("#lento").click(); }
+  else if (k === "+" || k === "=") $("#mas").click();
+  else if (k === "-") $("#menos").click();
+  else if (k === "ArrowLeft") $("#pista").scrollTop -= tam * 3;
+  else if (k === "Escape") salir();
+});
+document.addEventListener("visibilitychange", () => { if (!document.hidden && $("#lector").classList.contains("activo")) pantallaEncendida(true); });
+</script>
+</body>
+</html>
