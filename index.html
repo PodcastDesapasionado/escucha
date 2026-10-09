@@ -222,7 +222,7 @@ function madrid(d = new Date()) {
   return {dia: `${g("year")}-${g("month")}-${g("day")}`, hora: +g("hour"), min: +g("minute")};
 }
 function minutosHasta(hora) { const m = madrid(); let d = hora * 60 - (m.hora * 60 + m.min); if (d <= 0) d += 1440; return d; }
-// Pase de prueba: un enlace con #prueba abre la app hasta medianoche, solo ese día y en ese aparato.
+// Pase de excepción: un enlace con #prueba abre la app ya, hasta las 18:00 de hoy (solo en ese aparato).
 const enPrueba = () => leer("prueba", 0) > Date.now();
 const abierto = () => { if (enPrueba()) return true; const m = madrid(); return m.hora >= ABRE && m.hora < CIERRA; };
 const duracionTexto = min => min >= 60 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")} min` : `${min} min`;
@@ -231,7 +231,7 @@ const duracionTexto = min => min >= 60 ? `${Math.floor(min / 60)} h ${String(min
 function leerEnlace() {
   const h = location.hash;
   if (!h) return;
-  if (/(^#|&)prueba\b/.test(h)) { guardar("prueba", Date.now() + minutosHasta(0) * 60000); setTimeout(() => aviso("Abierta hasta medianoche"), 300); }
+  if (/(^#|&)prueba\b/.test(h)) { guardar("prueba", Date.now() + minutosHasta(CIERRA) * 60000); setTimeout(() => aviso(`Abierta hoy hasta las ${CIERRA}:00`), 300); }
   const m = h.match(/config=([^&]+)/);
   if (m) try {
     const feeds = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g, "+").replace(/_/g, "/")))));
@@ -313,7 +313,7 @@ let datos = null, filtro = leer("filtro", "todos"), actual = null, cargando = fa
 function pintarEstado() {
   const est = $("#estado");
   if (!leer("feeds", []).length) { est.textContent = "Sin feeds en este aparato"; return; }
-  if (enPrueba()) { est.textContent = "Pase de prueba · hasta medianoche"; return; }
+  if (enPrueba()) { est.textContent = `Excepción de hoy · abierta hasta las ${CIERRA}:00`; return; }
   est.textContent = abierto() ? `Abierto · cierra en ${duracionTexto(minutosHasta(CIERRA))}` : `Cerrado · abre a las ${ABRE}:00`;
 }
 function pintar() {
