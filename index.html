@@ -500,10 +500,10 @@ async function arrancar(forzar) {
   pintar();
   if (!abierto() || !leer("feeds", []).length) return;
   const cache = leer("cache", null);
-  if (cache && cache.dia === madrid().dia && !forzar) { datos = cache; pintar(); return; }
+  if (cache && cache.dia === madrid().dia && cache.portadas && !forzar) { datos = cache; if (actual) mostrar(actual); pintar(); return; }
   if (cache) { datos = cache; pintar(); }
   cargando = true; $("#actualizar").classList.add("girando");
-  try { datos = await actualizar(forzar); if (forzar) aviso("Al día"); }
+  try { datos = await actualizar(forzar); if (forzar) aviso("Al día"); if (actual) { const e = datos.episodios.find(x => x.id === actual.id); if (e) { actual = e; guardar("actual", e); } mostrar(actual); } }
   catch { aviso("No se ha podido actualizar"); }
   finally { cargando = false; $("#actualizar").classList.remove("girando"); }
   pintar();
